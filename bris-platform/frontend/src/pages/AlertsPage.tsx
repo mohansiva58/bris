@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Layout } from '@/components/Layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -7,9 +7,13 @@ import { Button } from '@/components/ui/Button'
 import { riskAPI } from '@/lib/api'
 import { formatDate, getRiskBadgeVariant } from '@/lib/utils'
 import { AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { useWebSocket } from '@/hooks/useWebSocket'
+import { Wifi } from 'lucide-react'
 
 export default function AlertsPage() {
     const [filter, setFilter] = useState<string>('all')
+    const { isConnected, subscribe } = useWebSocket()
+    const queryClient = useQueryClient()
 
     const { data: alertsData, refetch } = useQuery({
         queryKey: ['alerts', filter],
@@ -19,6 +23,18 @@ export default function AlertsPage() {
             return response.data.data
         },
     })
+
+    useEffect(() => {
+        if (!subscribe) return
+
+        const unsubscribe = subscribe('new_alert', (data: any) => {
+            console.log('New alert received:', data)
+            // Invalidate query to refetch
+            queryClient.invalidateQueries({ queryKey: ['alerts'] })
+        })
+
+        return unsubscribe
+    }, [subscribe, queryClient])
 
     const handleUpdateStatus = async (alertId: number, status: string) => {
         try {
@@ -47,7 +63,15 @@ export default function AlertsPage() {
             <div className="space-y-6">
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900">Alerts</h2>
+                        <div className="flex items-center space-x-3">
+                            <h2 className="text-3xl font-bold text-gray-900">Alerts</h2>
+                            {isConnected && (
+                                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 animate-pulse">
+                                    <Wifi className="w-3 h-3 mr-1" />
+                                    Live
+                                </Badge>
+                            )}
+                        </div>
                         <p className="text-gray-500 mt-1">Manage and review risk alerts</p>
                     </div>
                     <div className="flex space-x-2">
@@ -94,7 +118,7 @@ export default function AlertsPage() {
                                             </div>
                                             <div className="space-y-2 text-sm text-gray-600">
                                                 <p>
-                                                    <span className="font-medium">User:</span> {alert.full_name} ({alert.email})
+                                                    <span className="font-medium">User:</span> {alert.full_name || `User ${alert.user_id}`} ({alert.email || 'Anonymous'})
                                                 </p>
                                                 {alert.description && (
                                                     <p>
@@ -110,7 +134,7 @@ export default function AlertsPage() {
                                                     <span className="font-medium">Risk Score:</span>{' '}
                                                     <span className="font-bold text-red-600">{alert.risk_score}</span>
                                                 </p>
-                                                <p className="text-xs text-gray-400">{formatDate(alert.created_at)}</p>
+                                                <p className="text-xs text-gray-400">{formatDate(alert.created_at || alert.timestamp)}</p>
                                             </div>
                                         </div>
                                     </div>
