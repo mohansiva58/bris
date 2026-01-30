@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BRIS Demo - Exam Cheating Simulator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .exam-container {
+            padding: 40px;
+        }
+
+        .question {
+            margin-bottom: 30px;
+        }
+
+        .question h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .cheat-btn {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .cheat-btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+
+        .stats h4 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            color: #666;
+        }
+
+        .stat-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert.danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .alert.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .timer {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>🎓 Online Exam - Proctored</h1>
+            <p class="subtitle">BRIS Behavioral Monitoring Active</p>
+            <div class="timer" id="timer">Time Remaining: 30:00</div>
+        </header>
+
+        <div class="exam-container">
+            <div class="alert" id="alert"></div>
+
+            <div class="question">
+                <h3>Question 1: Explain the concept of REST APIs</h3>
+                <textarea id="answer1" placeholder="Type your answer here..."></textarea>
+            </div>
+
+            <div class="question">
+                <h3>Question 2: What is the difference between SQL and NoSQL databases?</h3>
+                <textarea id="answer2" placeholder="Type your answer here..."></textarea>
+            </div>
+
+            <div class="controls">
+                <button class="primary-btn" onclick="submitExam()">Submit Exam</button>
+                <button class="cheat-btn" onclick="simulateCheating()">🔥 Simulate Cheating Behavior</button>
+            </div>
+
+            <div class="stats">
+                <h4>📊 Activity Monitor</h4>
+                <div class="stat-item">
+                    <span class="stat-label">Tab Switches:</span>
+                    <span class="stat-value" id="tabSwitches">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Copy Events:</span>
+                    <span class="stat-value" id="copyEvents">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Paste Events:</span>
+                    <span class="stat-value" id="pasteEvents">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Events Sent to BRIS:</span>
+                    <span class="stat-value" id="eventsSent">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Session ID:</span>
+                    <span class="stat-value" id="sessionId" style="font-size: 0.8em;">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // BRIS Tracking Configuration
+        const BRIS_CONFIG = {
+            apiEndpoint: 'http://localhost:3000/api/events',
+            userId: 1, // Demo user
+            sessionId: `exam-session-${Date.now()}`,
+            batchInterval: 5000, // Send events every 5 seconds
+        };
+
+        // Session state
+        const state = {
+            events: [],
+            tabSwitchCount: 0,
+            copyCount: 0,
+            pasteCount: 0,
+            eventsSent: 0,
+            sessionStart: Date.now(),
+        };
+
+        // Initialize
+        function init() {
+            document.getElementById('sessionId').textContent = BRIS_CONFIG.sessionId;
+            startEventTracking();
+            startBatchSender();
+            startTimer();
+            captureEvent('page_load', { url: window.location.href });
+        }
+
+        // Capture behavioral event
+        function captureEvent(eventType, eventData = {}) {
+            const event = {
+                event_type: eventType,
+                event_data: eventData,
+                timestamp: new Date().toISOString(),
+            };
+
+            state.events.push(event);
+            console.log('📝 Event captured:', eventType, eventData);
+        }
+
+        // Send events to backend
+        async function sendEventsBatch() {
+            if (state.events.length === 0) return;
+
+            const payload = {
+                user_id: BRIS_CONFIG.userId,
+                session_id: BRIS_CONFIG.sessionId,
+                events: state.events,
+            };
+
+            try {
+                const response = await fetch(BRIS_CONFIG.apiEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    state.eventsSent += payload.events.length;
+                    document.getElementById('eventsSent').textContent = state.eventsSent;
+                    state.events = []; // Clear sent events
+                    console.log('✅ Events sent successfully:', result);
+
+                    showAlert('Events sent to BRIS for analysis', 'success');
+                } else {
+                    console.error('❌ Failed to send events:', response.statusText);
+                    showAlert('Failed to send events. Is the backend running?', 'danger');
+                }
+            } catch (error) {
+                console.error('❌ Network error:', error);
+                showAlert('Backend connection error. Check console.', 'danger');
+            }
+        }
+
+        // Start event tracking
+        function startEventTracking() {
+            // Track clicks
+            document.addEventListener('click', (e) => {
+                captureEvent('click', {
+                    x: e.clientX,
+                    y: e.clientY,
+                    target: e.target.tagName,
+                });
+            });
+
+            // Track copy
+            document.addEventListener('copy', () => {
+                state.copyCount++;
+                document.getElementById('copyEvents').textContent = state.copyCount;
+                captureEvent('copy', { timestamp: Date.now() });
+                showAlert('⚠️ Copy detected - This may affect your risk score!', 'warning');
+            });
+
+            // Track paste
+            document.addEventListener('paste', () => {
+                state.pasteCount++;
+                document.getElementById('pasteEvents').textContent = state.pasteCount;
+                captureEvent('paste', { timestamp: Date.now() });
+                showAlert('⚠️ Paste detected - This may affect your risk score!', 'warning');
+            });
+
+            // Track tab visibility
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    state.tabSwitchCount++;
+                    document.getElementById('tabSwitches').textContent = state.tabSwitchCount;
+                    captureEvent('tab_switch', { timestamp: Date.now() });
+                    showAlert('⚠️ Tab switch detected!', 'warning');
+                }
+            });
+
+            // Track typing in textareas
+            document.querySelectorAll('textarea').forEach(textarea => {
+                let lastTypingTime = 0;
+                textarea.addEventListener('input', (e) => {
+                    const now = Date.now();
+                    if (now - lastTypingTime > 1000) { // Every second of typing
+                        captureEvent('keypress', {
+                            length: e.target.value.length,
+                            field: e.target.id,
+                        });
+                        lastTypingTime = now;
+                    }
+                });
+            });
+        }
+
+        // Start batch sender (every 5 seconds)
+        function startBatchSender() {
+            setInterval(() => {
+                sendEventsBatch();
+            }, BRIS_CONFIG.batchInterval);
+        }
+
+        // Simulate cheating behavior
+        function simulateCheating() {
+            showAlert('🔥 Simulating suspicious behavior pattern...', 'danger');
+
+            // Simulate rapid tab switching
+            for (let i = 0; i < 12; i++) {
+                setTimeout(() => {
+                    state.tabSwitchCount++;
+                    document.getElementById('tabSwitches').textContent = state.tabSwitchCount;
+                    captureEvent('tab_switch', {
+                        simulated: true,
+                        count: i + 1,
+                    });
+                }, i * 100);
+            }
+
+            // Simulate copy-paste events
+            setTimeout(() => {
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        state.copyCount++;
+                        state.pasteCount++;
+                        document.getElementById('copyEvents').textContent = state.copyCount;
+                        document.getElementById('pasteEvents').textContent = state.pasteCount;
+                        captureEvent('copy', { simulated: true });
+                        captureEvent('paste', { simulated: true });
+                    }, i * 200);
+                }
+            }, 1500);
+
+            // Force immediate send
+            setTimeout(() => {
+                sendEventsBatch();
+                showAlert('🚨 Suspicious pattern sent to BRIS! Check the dashboard for risk alert.', 'danger');
+            }, 3000);
+        }
+
+        // Submit exam
+        function submitExam() {
+            captureEvent('form_submit', {
+                answer1_length: document.getElementById('answer1').value.length,
+                answer2_length: document.getElementById('answer2').value.length,
+            });
+
+            sendEventsBatch();
+            showAlert('✅ Exam submitted successfully!', 'success');
+        }
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertEl = document.getElementById('alert');
+            alertEl.textContent = message;
+            alertEl.className = `alert ${type} show`;
+
+            setTimeout(() => {
+                alertEl.classList.remove('show');
+            }, 4000);
+        }
+
+        // Timer
+        function startTimer() {
+            let timeLeft = 30 * 60; // 30 minutes
+            const timerEl = document.getElementById('timer');
+
+            setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerEl.textContent = `Time Remaining: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                if (timeLeft <= 0) {
+                    submitExam();
+                }
+            }, 1000);
+        }
+
+        // Initialize on page load
+        window.addEventListener('load', init);
+
+        // Log on page unload
+        window.addEventListener('beforeunload', () => {
+            captureEvent('page_unload', {
+                session_duration: (Date.now() - state.sessionStart) / 1000,
+            });
+            sendEventsBatch();
+        });
+    </script>
+</body>
+
+</html>

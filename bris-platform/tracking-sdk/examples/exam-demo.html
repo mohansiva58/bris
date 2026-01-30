@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Exam - BRIS Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge.active {
+            background: #10b981;
+            color: white;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: white;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .exam-container {
+            background: white;
+            padding: 40px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .question {
+            margin-bottom: 30px;
+        }
+
+        .question h2 {
+            font-size: 20px;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .question p {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            padding: 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .alert-warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+        }
+
+        .alert-info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 2px dashed #e5e7eb;
+        }
+
+        .stat-card {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .info-box {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .info-box h3 {
+            font-size: 14px;
+            color: #166534;
+            margin-bottom: 8px;
+        }
+
+        .info-box p {
+            font-size: 13px;
+            color: #15803d;
+            line-height: 1.5;
+        }
+
+        .timer {
+            font-size: 18px;
+            font-weight: 600;
+            color: #667eea;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>📝 Mathematics Exam - Question 1</h1>
+                <div class="timer" id="timer">Time: 00:00</div>
+            </div>
+            <div class="status-badge active">
+                <div class="status-dot"></div>
+                <span>BRIS Active</span>
+            </div>
+        </div>
+
+        <div class="exam-container">
+            <div class="info-box">
+                <h3>ℹ️ Behavioral Monitoring Active</h3>
+                <p>This exam uses BRIS (Behavioral Risk Intelligence System) to ensure academic integrity. Your
+                    interactions are being analyzed for suspicious patterns. Tab switching and suspicious behavior will
+                    be flagged.</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div class="question">
+                <h2>Question 1: Algebraic Equation</h2>
+                <p>Solve for x in the following equation and show your work:</p>
+                <p><strong>2x + 5 = 15</strong></p>
+
+                <textarea id="answer" placeholder="Type your answer here... Show all steps of your work."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="submitAnswer()">
+                    ✓ Submit Answer
+                </button>
+                <button class="btn-secondary" onclick="nextQuestion()">
+                    → Next Question
+                </button>
+            </div>
+
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">Tab Switches</div>
+                    <div class="stat-value" id="tabSwitches">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Copy Events</div>
+                    <div class="stat-value" id="copyEvents">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Paste Events</div>
+                    <div class="stat-value" id="pasteEvents">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Events Sent</div>
+                    <div class="stat-value" id="eventsSent">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BRIS SDK -->
+    <script src="../dist/bris-sdk.js"></script>
+
+    <script>
+        // Initialize counters
+        let stats = {
+            tabSwitches: 0,
+            copyEvents: 0,
+            pasteEvents: 0,
+            eventsSent: 0
+        };
+
+        // Timer
+        let startTime = Date.now();
+        setInterval(() => {
+            const elapsed = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            document.getElementById('timer').textContent =
+                `Time: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }, 1000);
+
+        // Initialize BRIS SDK
+        BRIS.init({
+            apiKey: 'pk_test_demo123',
+            apiEndpoint: 'http://localhost:3000/api/events',
+            userId: 'student_demo_001',
+            sessionId: 'exam_session_' + Date.now(),
+
+            capture: {
+                mouse: true,
+                keyboard: true,
+                scroll: true,
+                visibility: true,
+                navigation: true,
+                forms: true
+            },
+
+            batchInterval: 3000,
+            debug: true
+        });
+
+        console.log('[Demo] BRIS initialized:', BRIS.getSession());
+
+        // Monitor events for display
+        const originalTrack = BRIS.track.bind(BRIS);
+        BRIS.track = function (eventType, eventData) {
+            // Call original
+            originalTrack(eventType, eventData);
+
+            // Update UI
+            stats.eventsSent++;
+            document.getElementById('eventsSent').textContent = stats.eventsSent;
+
+            // Specific events
+            if (eventType === 'tab_hidden') {
+                stats.tabSwitches++;
+                document.getElementById('tabSwitches').textContent = stats.tabSwitches;
+                showAlert('warning', '⚠️ Tab switch detected! This behavior is being flagged.');
+            }
+            if (eventType === 'clipboard_copy') {
+                stats.copyEvents++;
+                document.getElementById('copyEvents').textContent = stats.copyEvents;
+            }
+            if (eventType === 'clipboard_paste') {
+                stats.pasteEvents++;
+                document.getElementById('pasteEvents').textContent = stats.pasteEvents;
+                showAlert('warning', '⚠️ Paste detected! Ensure you\'re not copying from external sources.');
+            }
+        };
+
+        // UI Functions
+        function showAlert(type, message) {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-' + type;
+            alert.textContent = message;
+            container.appendChild(alert);
+
+            setTimeout(() => {
+                alert.style.opacity = '0';
+                setTimeout(() => alert.remove(), 300);
+            }, 5000);
+        }
+
+        function submitAnswer() {
+            const answer = document.getElementById('answer').value;
+
+            if (!answer.trim()) {
+                showAlert('warning', '⚠️ Please provide an answer before submitting.');
+                return;
+            }
+
+            BRIS.track('exam_submit', {
+                question_id: 1,
+                answer_length: answer.length,
+                time_spent: Math.floor((Date.now() - startTime) / 1000)
+            });
+
+            showAlert('info', '✓ Answer submitted successfully! BRIS analysis complete.');
+
+            // Simulate server response
+            setTimeout(() => {
+                if (stats.tabSwitches > 0 || stats.pasteEvents > 0) {
+                    showAlert('warning', '⚠️ Suspicious behavior detected. Your exam will be reviewed by an instructor.');
+                }
+            }, 1500);
+        }
+
+        function nextQuestion() {
+            showAlert('info', '→ Moving to next question...');
+            setTimeout(() => {
+                window.location.href = '#question-2';
+            }, 1000);
+        }
+
+        // Warn before leaving
+        window.addEventListener('beforeunload', (e) => {
+            e.preventDefault();
+            e.returnValue = '';
+        });
+
+        console.log('📚 Exam demo loaded. Try these to trigger alerts:');
+        console.log('1. Switch tabs (Alt+Tab)');
+        console.log('2. Copy text (Ctrl+C)');
+        console.log('3. Paste text (Ctrl+V)');
+    </script>
+</body>
+
+</html>
