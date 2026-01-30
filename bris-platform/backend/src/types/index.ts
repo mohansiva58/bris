@@ -138,6 +138,14 @@ export interface BehavioralFeatures {
     event_count: number;
     unique_event_types: number;
     error_rate: number;
+
+    // Raw event counts for summary display
+    click_count: number;
+    scroll_count: number;
+    keypress_count: number;
+    tab_switch_count_raw: number;
+    copy_count: number;
+    paste_count: number;
 }
 
 // ============================================

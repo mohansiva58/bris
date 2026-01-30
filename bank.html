@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Secure Bank | Fraud Detection Test</title>
+    <!-- 1. INCLUDE BRIS SDK (Pointing to your local file) -->
+    <script src="bris-platform/tracking-sdk/dist/bris-sdk.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg: #0f172a;
+            --card: #1e293b;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 2.5rem;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #cbd5e1;
+            font-size: 0.9rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.8rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .bris-status {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 0.7rem;
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+            padding: 4px 10px;
+            border-radius: 100px;
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        #alert {
+            display: none;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-top: 1rem;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .success {
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container" id="mainContainer">
+        <div class="bris-status">
+            <div class="dot"></div> BRIS ACTIVE
+        </div>
+
+        <div class="header">
+            <h1>Money Transfer</h1>
+            <p>Enter details to complete secure transaction</p>
+        </div>
+
+        <div class="form-group">
+            <label>Recipient Account</label>
+            <input type="text" id="accNumber" placeholder="e.g. 9876 5432 1098">
+        </div>
+
+        <div class="form-group">
+            <label>Amount (USD)</label>
+            <input type="number" id="amount" placeholder="0.00">
+        </div>
+
+        <div class="form-group">
+            <label>Transfer Note</label>
+            <input type="text" id="note" placeholder="Rent, Dinner, etc.">
+        </div>
+
+        <button class="btn" onclick="handleTransfer()">Send Money</button>
+
+        <div id="alert"></div>
+    </div>
+
+    <script>
+        // 2. INITIALIZE BRIS
+        // Assuming your backend is running on port 3000
+        BRIS.init({
+            apiKey: 'bank_transfer_demo_pk',
+            apiEndpoint: 'http://localhost:3000/api/events',
+            userId: 99, // Updated to numeric ID
+            debug: true // See events in your console
+        });
+
+        function handleTransfer() {
+            const btn = document.querySelector('.btn');
+            const alert = document.getElementById('alert');
+
+            btn.innerHTML = 'Verifying Behavior...';
+            btn.disabled = true;
+
+            // Track custom event
+            BRIS.track('transfer_attempt', {
+                amount: document.getElementById('amount').value,
+                acc: document.getElementById('accNumber').value
+            });
+
+            setTimeout(() => {
+                alert.style.display = 'block';
+                alert.className = 'success';
+                alert.innerHTML = '✅ Transfer Successful!<br><small>BRIS verified your behavioral rhythm.</small>';
+                btn.innerHTML = 'Send Money';
+                btn.disabled = false;
+            }, 2000);
+        }
+
+        // Add some "Suspicious" logic for testing
+        // If they paste the account number, trigger an immediate alert
+        document.getElementById('accNumber').addEventListener('paste', () => {
+            console.log("BRIS detected a paste! This is common in Copy-Paste Fraud.");
+        });
+    </script>
+</body>
+
+</html>

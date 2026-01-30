@@ -26,7 +26,7 @@ export async function initializeDatabase(): Promise<void> {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS behavior_events (
                 id BIGSERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                user_id INTEGER, -- Removed strict reference to allow guest/external tracking
                 session_id VARCHAR(255) NOT NULL,
                 event_type VARCHAR(50) NOT NULL,
                 event_data JSONB NOT NULL,
@@ -43,7 +43,7 @@ export async function initializeDatabase(): Promise<void> {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS risk_scores (
                 id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                user_id INTEGER, -- Removed strict reference
                 session_id VARCHAR(255) NOT NULL,
                 risk_score FLOAT NOT NULL,
                 confidence FLOAT NOT NULL,
@@ -61,7 +61,7 @@ export async function initializeDatabase(): Promise<void> {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS alerts (
                 id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                user_id INTEGER, -- Removed strict reference
                 risk_score_id INTEGER REFERENCES risk_scores(id) ON DELETE CASCADE,
                 severity VARCHAR(20) NOT NULL,
                 status VARCHAR(20) DEFAULT 'open',
@@ -72,7 +72,7 @@ export async function initializeDatabase(): Promise<void> {
             );
         `);
         // Add missing columns to alerts
-        await pool.query('ALTER TABLE alerts ADD COLUMN IF NOT EXISTS assigned_to INTEGER REFERENCES users(id)');
+        await pool.query('ALTER TABLE alerts ADD COLUMN IF NOT EXISTS assigned_to INTEGER');
         await pool.query('ALTER TABLE alerts ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ');
         await pool.query('ALTER TABLE alerts ADD COLUMN IF NOT EXISTS resolution_notes TEXT');
 

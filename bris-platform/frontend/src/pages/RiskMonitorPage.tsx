@@ -16,6 +16,7 @@ interface RiskUpdate {
     severity: string
     explanation?: string
     timestamp: string
+    features?: any
 }
 
 export default function RiskMonitorPage() {
@@ -31,11 +32,11 @@ export default function RiskMonitorPage() {
         low: 0,
     })
 
-    // Fetch historical risk scores for demo user
+    // Fetch historical risk scores for all users
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const response = await riskAPI.getUserRiskScores(1, { limit: 50 })
+                const response = await riskAPI.getRecentRiskScores({ limit: 50 })
                 if (response.data.success) {
                     const historical = response.data.data.map((r: any) => ({
                         user_id: r.user_id,
@@ -43,7 +44,8 @@ export default function RiskMonitorPage() {
                         risk_score: r.risk_score,
                         severity: getRiskSeverity(r.risk_score),
                         explanation: r.explanation,
-                        timestamp: r.timestamp
+                        timestamp: r.timestamp,
+                        features: r.features
                     }))
                     setRiskUpdates(historical)
                     updateStats(historical)
@@ -96,7 +98,19 @@ export default function RiskMonitorPage() {
         return unsubscribe
     }, [subscribe])
 
-    const filteredUpdates = riskUpdates.filter(update => {
+    const groupedUpdates = riskUpdates.reduce((acc, update) => {
+        const key = update.session_id
+        if (!acc[key] || new Date(update.timestamp) > new Date(acc[key].timestamp)) {
+            acc[key] = update
+        }
+        return acc
+    }, {} as Record<string, RiskUpdate>)
+
+    const sortedGrouped = Object.values(groupedUpdates).sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    )
+
+    const filteredUpdates = sortedGrouped.filter(update => {
         if (filter === 'all') return true
         return update.severity === filter
     })
@@ -122,8 +136,8 @@ export default function RiskMonitorPage() {
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="text-3xl font-bold text-gray-900">Risk Monitor</h2>
-                        <p className="text-gray-500 mt-1">Real-time risk score updates</p>
+                        <h2 className="text-3xl font-bold text-gray-900">Live Session Monitoring</h2>
+                        <p className="text-gray-500 mt-1">Real-time summarized behavioral streams</p>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Button
@@ -239,7 +253,7 @@ export default function RiskMonitorPage() {
                                                 )}
                                             </div>
                                             <CardDescription className="mt-1">
-                                                Session: <span className="font-mono text-xs">{update.session_id.substring(0, 30)}...</span>
+                                                Session: <span className="font-mono text-xs text-blue-600">{update.session_id}</span>
                                             </CardDescription>
                                         </div>
                                         <div className="text-right ml-4">
@@ -250,26 +264,57 @@ export default function RiskMonitorPage() {
                                         </div>
                                     </div>
                                 </CardHeader>
-                                {update.explanation && (
-                                    <CardContent>
-                                        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                <CardContent className="space-y-4">
+                                    {/* Event Summary Grid */}
+                                    {update.features && (
+                                        <div className="grid grid-cols-2 md:grid-cols-6 gap-2 bg-gray-50 p-3 rounded-md border border-gray-100">
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-gray-400 uppercase font-semibold">Clicks</p>
+                                                <p className="text-sm font-bold text-gray-700">{update.features.click_count || 0}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-gray-400 uppercase font-semibold">Scrolls</p>
+                                                <p className="text-sm font-bold text-gray-700">{update.features.scroll_count || 0}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-gray-400 uppercase font-semibold">Typing</p>
+                                                <p className="text-sm font-bold text-gray-700">{update.features.keypress_count || 0}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-gray-400 uppercase font-semibold">Tab Switch</p>
+                                                <p className="text-sm font-bold text-orange-600">{update.features.tab_switch_count_raw || 0}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-gray-400 uppercase font-semibold">Copy</p>
+                                                <p className="text-sm font-bold text-blue-600">{update.features.copy_count || 0}</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-gray-400 uppercase font-semibold">Paste</p>
+                                                <p className="text-sm font-bold text-red-600">{update.features.paste_count || 0}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {update.explanation && (
+                                        <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
                                             <div className="flex items-start space-x-2">
-                                                <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                                                <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-medium text-gray-900 mb-1">🔍 Risk Factors Detected:</p>
-                                                    <p className="text-sm text-gray-700">{update.explanation}</p>
+                                                    <p className="text-sm font-medium text-amber-900 mb-1">🔍 Risk Explanation:</p>
+                                                    <p className="text-sm text-amber-800">{update.explanation}</p>
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
-                                            <span>{formatDate(update.timestamp)}</span>
-                                            <span className="flex items-center">
-                                                <Clock className="w-3 h-3 mr-1" />
-                                                {Math.floor((Date.now() - new Date(update.timestamp).getTime()) / 1000)}s ago
-                                            </span>
-                                        </div>
-                                    </CardContent>
-                                )}
+                                    )}
+
+                                    <div className="mt-3 flex items-center justify-between text-xs text-gray-400">
+                                        <span>{formatDate(update.timestamp)}</span>
+                                        <span className="flex items-center">
+                                            <Clock className="w-3 h-3 mr-1" />
+                                            {Math.floor((Date.now() - new Date(update.timestamp).getTime()) / 1000)}s ago
+                                        </span>
+                                    </div>
+                                </CardContent>
                             </Card>
                         ))}
                     </div>

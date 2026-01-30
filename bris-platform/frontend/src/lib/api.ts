@@ -42,6 +42,7 @@ export const authAPI = {
 export const riskAPI = {
     getUserRiskScores: (userId: number, params?: any) =>
         api.get(`/risk/${userId}`, { params }),
+    getRecentRiskScores: (params?: any) => api.get('/risk/recent', { params }),
     getAlerts: (params?: any) => api.get('/risk/alerts/list', { params }),
     getDashboardMetrics: () => api.get('/risk/dashboard/metrics'),
     updateAlertStatus: (alertId: number, status: string, notes?: string) =>

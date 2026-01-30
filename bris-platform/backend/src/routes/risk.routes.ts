@@ -1,10 +1,13 @@
 import { Router } from 'express';
 import { RiskController } from '../controllers/risk.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
+import { authenticate, authorize, optionalAuth } from '../middleware/auth.middleware';
 
 const router = Router();
 
-// All risk routes require authentication
+// Get recent risk scores (all users) - Public or Optional Auth for Dashboards
+router.get('/recent', optionalAuth, RiskController.getRecentRiskScores);
+
+// All other risk routes require authentication
 router.use(authenticate);
 
 // Get user risk scores

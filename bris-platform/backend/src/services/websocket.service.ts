@@ -1,6 +1,5 @@
 import { Server, Socket } from 'socket.io';
 import { logger } from '../utils/logger';
-import { AuthRequest } from '../types';
 
 let ioInstance: Server | null = null;
 
@@ -57,6 +56,7 @@ export function emitRiskUpdate(data: {
     risk_score: number;
     severity: string;
     explanation?: string;
+    features?: any;
 }): void {
     if (!ioInstance) {
         logger.warn('WebSocket not initialized, cannot emit risk update');
@@ -137,8 +137,8 @@ export function getConnectedClientsCount(): number {
 }
 
 // Get rooms
-export function getRooms(): Set<string> {
-    if (!ioInstance) return new Set();
+export function getRooms(): any {
+    if (!ioInstance) return new Map();
     return ioInstance.sockets.adapter.rooms;
 }
 

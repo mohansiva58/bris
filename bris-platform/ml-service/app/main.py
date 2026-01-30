@@ -109,72 +109,34 @@ async def predict(request: PredictRequest):
         risk_score = 0.0
         anomaly_indicators = []
         
-        # Tab switching penalty (major cheating indicator)
-        if features.tab_switch_count > 10:
-            penalty = min(features.tab_switch_count * 4, 40)
+        # Tab switching penalty (cheating indicator)
+        if features.tab_switch_count > 0:
+            penalty = min(features.tab_switch_count * 15, 60) # High penalty per switch
             risk_score += penalty
-            anomaly_indicators.append(f"Excessive tab switching ({features.tab_switch_count} times)")
-        elif features.tab_switch_count > 5:
-            risk_score += features.tab_switch_count * 2
-            anomaly_indicators.append(f"Frequent tab switching ({features.tab_switch_count} times)")
+            anomaly_indicators.append(f"Tab switching detected ({features.tab_switch_count} times)")
         
-        # Copy-paste penalty (major cheating indicator)
-        if features.copy_paste_events > 5:
-            penalty = min(features.copy_paste_events * 6, 35)
+        # Copy-paste penalty (cheating indicator)
+        if features.copy_paste_events > 0:
+            penalty = min(features.copy_paste_events * 12, 50) # Very high penalty
             risk_score += penalty
-            anomaly_indicators.append(f"Multiple copy-paste events ({features.copy_paste_events} times)")
-        elif features.copy_paste_events > 0:
-            risk_score += features.copy_paste_events * 4
             anomaly_indicators.append(f"Copy-paste detected ({features.copy_paste_events} times)")
         
         # Unusual typing speed
-        if features.typing_speed > 200:  # Very fast typing
+        if features.typing_speed > 150:  # Fast typing
             risk_score += 15
-            anomaly_indicators.append(f"Unusually fast typing ({features.typing_speed:.0f} chars/min)")
-        elif features.typing_speed < 10 and features.event_count > 50:  # Very slow but active
-            risk_score += 10
-            anomaly_indicators.append("Minimal typing detected")
-        
-        # Session timing anomalies
-        if features.time_of_day < 6 or features.time_of_day > 23:
-            risk_score += 12
-            anomaly_indicators.append(f"Unusual time of activity ({features.time_of_day}:00)")
-        
-        # Device/location changes (fraud indicator)
-        if features.device_change:
-            risk_score += 18
-            anomaly_indicators.append("Device fingerprint changed during session")
-        
-        if features.location_anomaly:
-            risk_score += 18
-            anomaly_indicators.append("Unusual location detected")
-        
-        # Rapid navigation (bot-like behavior)
-        if features.navigation_speed > 10:  # pages per minute
-            risk_score += 15
-            anomaly_indicators.append(f"Rapid page navigation ({features.navigation_speed:.1f} pages/min)")
-        
-        # Very short session with high activity (bot indicator)
-        if features.session_duration < 2 and features.event_count > 100:
-            risk_score += 20
-            anomaly_indicators.append("High activity in very short time")
-        
-        # Low interaction diversity (automated behavior)
-        if features.unique_event_types < 3 and features.event_count > 50:
-            risk_score += 12
-            anomaly_indicators.append("Limited interaction variety")
+            anomaly_indicators.append("Unusually fast typing patterns")
         
         # Normalize/cap risk score
         risk_score = min(max(risk_score, 0), 100)
         
         # Determine anomaly type
-        if risk_score >= 90:
+        if risk_score >= 80:
             anomaly_type = "critical_suspicious_activity"
-        elif risk_score >= 75:
+        elif risk_score >= 60:
             anomaly_type = "high_risk_behavior"
-        elif risk_score >= 50:
+        elif risk_score >= 40:
             anomaly_type = "moderate_anomaly"
-        elif risk_score >= 25:
+        elif risk_score >= 15:
             anomaly_type = "minor_irregularity"
         else:
             anomaly_type = "normal_behavior"

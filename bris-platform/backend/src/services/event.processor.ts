@@ -34,8 +34,20 @@ export async function processEventBatch(job: EventProcessingJob): Promise<void> 
         for (const [sessionKey, sessionEvents] of Object.entries(sessionGroups)) {
             const [userId, sessionId] = sessionKey.split('::');
 
-            // Extract features from events
-            const features = extractFeatures(sessionEvents as BehaviorEvent[]);
+            // FETCH ALL EVENTS FOR THIS SESSION TO CALCULATE CUMULATIVE FEATURES
+            // This ensures we remember past tab switches, copy-pastes, etc.
+            const sessionHistoryRes = await query(
+                'SELECT * FROM behavior_events WHERE session_id = $1 ORDER BY timestamp ASC LIMIT 1000',
+                [sessionId]
+            );
+
+            const allSessionEvents = sessionHistoryRes.rows.map(row => ({
+                ...row,
+                event_data: typeof row.event_data === 'string' ? JSON.parse(row.event_data) : row.event_data
+            }));
+
+            // Extract features from ALL session events
+            const features = extractFeatures(allSessionEvents as BehaviorEvent[]);
 
             // Call ML service for prediction
             const prediction = await callMLService({
@@ -64,6 +76,7 @@ export async function processEventBatch(job: EventProcessingJob): Promise<void> 
                 risk_score: prediction.risk_score,
                 severity: getRiskSeverity(prediction.risk_score),
                 explanation: prediction.explanation,
+                features: features,
             });
 
             // Update dashboard metrics (broadcast to all admins)
@@ -160,12 +173,12 @@ export function extractFeatures(events: BehaviorEvent[]): BehavioralFeatures {
     }, {} as Record<string, number>);
 
     // Calculate metrics
-    const clickCount = eventCounts['click'] || 0;
+    const clickCount = eventCounts['mouse_click'] || 0;
     const scrollCount = eventCounts['scroll'] || 0;
-    const tabSwitchCount = eventCounts['tab_switch'] || 0;
-    const copyCount = eventCounts['copy'] || 0;
-    const pasteCount = eventCounts['paste'] || 0;
-    const keypressCount = eventCounts['keypress'] || 0;
+    const tabSwitchCount = eventCounts['tab_visible'] || 0;
+    const copyCount = eventCounts['clipboard_copy'] || 0;
+    const pasteCount = eventCounts['clipboard_paste'] || 0;
+    const keypressCount = eventCounts['keyboard_down'] || 0;
 
     // Time-based calculations
     const durationMinutes = Math.max(sessionDuration, 0.1); // Avoid division by zero
@@ -201,6 +214,12 @@ export function extractFeatures(events: BehaviorEvent[]): BehavioralFeatures {
         event_count: events.length,
         unique_event_types: Object.keys(eventCounts).length,
         error_rate: 0, // Would calculate from error events
+        click_count: clickCount,
+        scroll_count: scrollCount,
+        keypress_count: keypressCount,
+        tab_switch_count_raw: tabSwitchCount,
+        copy_count: copyCount,
+        paste_count: pasteCount,
     };
 }
 
@@ -233,6 +252,12 @@ function getDefaultFeatures(): BehavioralFeatures {
         event_count: 0,
         unique_event_types: 0,
         error_rate: 0,
+        click_count: 0,
+        scroll_count: 0,
+        keypress_count: 0,
+        tab_switch_count_raw: 0,
+        copy_count: 0,
+        paste_count: 0,
     };
 }
 
@@ -279,11 +304,20 @@ async function callMLService(data: {
 function calculateFallbackRiskScore(features: BehavioralFeatures): number {
     let score = 0;
 
-    // Tab switching penalty
-    score += Math.min(features.tab_switch_count * 5, 40);
+    // Tab switching penalty (High priority)
+    if (features.tab_switch_count > 0) {
+        score += Math.min(features.tab_switch_count * 20, 60);
+    }
 
-    // Copy-paste penalty
-    score += Math.min(features.copy_paste_events * 10, 30);
+    // Copy-paste penalty (High priority)
+    if (features.copy_paste_events > 0) {
+        score += Math.min(features.copy_paste_events * 15, 40);
+    }
+
+    // Typing speed anomaly
+    if (features.typing_speed > 150) {
+        score += 15;
+    }
 
     // Unusual time penalty
     if (features.time_of_day < 6 || features.time_of_day > 22) {
@@ -294,7 +328,7 @@ function calculateFallbackRiskScore(features: BehavioralFeatures): number {
     if (features.device_change) score += 15;
     if (features.location_anomaly) score += 15;
 
-    return Math.min(Math.max(score, 0), 100);
+    return Math.min(score, 100);
 }
 
 // Store risk score in database

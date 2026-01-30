@@ -48,6 +48,29 @@ export class RiskController {
         }
     }
 
+    // GET /api/risk/recent - Get recent risk scores for all users
+    static async getRecentRiskScores(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const { limit = 50 } = req.query;
+
+            const sql = 'SELECT * FROM risk_scores ORDER BY timestamp DESC LIMIT $1';
+            const result = await query(sql, [limit]);
+
+            res.json({
+                success: true,
+                data: result.rows,
+                timestamp: new Date(),
+            });
+        } catch (error: any) {
+            logger.error('Error fetching recent risk scores', { error: error.message });
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date(),
+            });
+        }
+    }
+
     // GET /api/risk/alerts - Get recent alerts
     static async getAlerts(req: AuthRequest, res: Response): Promise<void> {
         try {
@@ -56,7 +79,7 @@ export class RiskController {
             let sql = `
         SELECT a.*, u.email, u.full_name, r.risk_score, r.explanation
         FROM alerts a
-        JOIN users u ON a.user_id = u.id
+        LEFT JOIN users u ON a.user_id = u.id
         LEFT JOIN risk_scores r ON a.risk_score_id = r.id
         WHERE 1=1
       `;
