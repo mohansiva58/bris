@@ -47,15 +47,15 @@ export async function authenticate(
         req.user = user;
 
         next();
-    } catch (error) {
-        if (error instanceof AuthenticationError) {
+    } catch (error: any) {
+        if (error.statusCode === 401) {
             res.status(401).json({
                 success: false,
                 error: error.message,
                 timestamp: new Date(),
             });
         } else {
-            logger.error('Authentication error', { error });
+            logger.error('Authentication error', { error: error.message || error });
             res.status(500).json({
                 success: false,
                 error: 'Internal authentication error',
@@ -80,21 +80,21 @@ export function authorize(...allowedRoles: string[]) {
             }
 
             next();
-        } catch (error) {
-            if (error instanceof AuthorizationError) {
+        } catch (error: any) {
+            if (error.statusCode === 403) {
                 res.status(403).json({
                     success: false,
                     error: error.message,
                     timestamp: new Date(),
                 });
-            } else if (error instanceof AuthenticationError) {
+            } else if (error.statusCode === 401) {
                 res.status(401).json({
                     success: false,
                     error: error.message,
                     timestamp: new Date(),
                 });
             } else {
-                logger.error('Authorization error', { error });
+                logger.error('Authorization error', { error: error.message || error });
                 res.status(500).json({
                     success: false,
                     error: 'Internal authorization error',
@@ -127,7 +127,6 @@ export async function optionalAuth(
     }
 }
 
-// Generate access token
 export function generateAccessToken(user: {
     id: number;
     email: string;
@@ -140,9 +139,9 @@ export function generateAccessToken(user: {
             role: user.role,
             type: 'access',
         },
-        config.jwt.secret,
+        config.jwt.secret as string,
         {
-            expiresIn: config.jwt.access_expiry,
+            expiresIn: config.jwt.access_expiry as any,
             issuer: config.jwt.issuer,
         }
     );
@@ -161,9 +160,9 @@ export function generateRefreshToken(user: {
             role: user.role,
             type: 'refresh',
         },
-        config.jwt.secret,
+        config.jwt.secret as string,
         {
-            expiresIn: config.jwt.refresh_expiry,
+            expiresIn: config.jwt.refresh_expiry as any,
             issuer: config.jwt.issuer,
         }
     );

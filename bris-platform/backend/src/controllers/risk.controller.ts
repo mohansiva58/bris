@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import axios from 'axios';
 import { AuthRequest } from '../types';
 import { logger } from '../utils/logger';
 import { query } from '../config/database';
@@ -250,6 +251,98 @@ export class RiskController {
                 error: error.message,
                 timestamp: new Date(),
             });
+        }
+    }
+
+    // AI FEATURES ENDPOINTS
+
+    // POST /api/risk/ai/dna - Get Behavioral DNA
+    static async getAIDNA(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const { userId, features } = req.body;
+            const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+
+            const response = await axios.post(`${mlUrl}/ai/dna`, {
+                user_id: userId,
+                features
+            });
+
+            res.json({
+                success: true,
+                data: response.data,
+                timestamp: new Date()
+            });
+        } catch (error: any) {
+            logger.error('Error fetching AI DNA', { error: error.message });
+            res.status(500).json({ success: false, error: 'AI DNA Analysis Failed' });
+        }
+    }
+
+    // POST /api/risk/ai/reconstruction - Get Shadow Reconstruction
+    static async getAIRconstruction(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const { sessionId, features } = req.body;
+            const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+
+            const response = await axios.post(`${mlUrl}/ai/reconstruction`, {
+                session_id: sessionId,
+                features
+            });
+
+            res.json({
+                success: true,
+                data: response.data,
+                timestamp: new Date()
+            });
+        } catch (error: any) {
+            logger.error('Error fetching AI Reconstruction', { error: error.message });
+            res.status(500).json({ success: false, error: 'AI Reconstruction Failed' });
+        }
+    }
+
+    // POST /api/risk/ai/query - Natural Language Query (BRIS-GPT)
+    static async getAIGPTQuery(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const { query: userQuery, contextData } = req.body;
+            const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+
+            const response = await axios.post(`${mlUrl}/ai/query`, {
+                query: userQuery,
+                context_data: contextData
+            });
+
+            res.json({
+                success: true,
+                data: response.data,
+                timestamp: new Date()
+            });
+        } catch (error: any) {
+            logger.error('Error in BRIS-GPT Query', { error: error.message });
+            res.status(500).json({ success: false, error: 'AI Query Failed' });
+        }
+    }
+
+    // POST /api/risk/ai/forensic-report - Generate Detailed Report
+    static async getAIForensicReport(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const { sessionId, userId, features, eventsSummary } = req.body;
+            const mlUrl = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+
+            const response = await axios.post(`${mlUrl}/ai/forensic-report`, {
+                session_id: sessionId,
+                user_id: userId,
+                features,
+                events_summary: eventsSummary
+            });
+
+            res.json({
+                success: true,
+                data: response.data,
+                timestamp: new Date()
+            });
+        } catch (error: any) {
+            logger.error('Error Generating AI Forensic Report', { error: error.message });
+            res.status(500).json({ success: false, error: 'Report Generation Failed' });
         }
     }
 }

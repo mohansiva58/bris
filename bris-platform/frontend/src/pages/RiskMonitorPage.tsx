@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { formatDate, getRiskColor } from '@/lib/utils'
-import { AlertCircle, TrendingUp, Clock, Filter, Sparkles, X, ShieldCheck, BrainCircuit, Activity } from 'lucide-react'
+import { AlertCircle, TrendingUp, Clock, Filter, Sparkles, X, ShieldCheck, BrainCircuit, Activity, FileText, Download } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { riskAPI } from '@/lib/api'
 import { Trash2 } from 'lucide-react'
@@ -25,6 +25,11 @@ export default function RiskMonitorPage() {
     const [filter, setFilter] = useState<string>('all')
     const [isLoading, setIsLoading] = useState(true)
     const [selectedUpdate, setSelectedUpdate] = useState<RiskUpdate | null>(null)
+    const [aiDNA, setAiDNA] = useState<any>(null)
+    const [aiReconstruction, setAiReconstruction] = useState<any>(null)
+    const [aiForensicReport, setAiForensicReport] = useState<any>(null)
+    const [isAILoading, setIsAILoading] = useState(false)
+    const [isReportLoading, setIsReportLoading] = useState(false)
     const [stats, setStats] = useState({
         total: 0,
         critical: 0,
@@ -98,6 +103,54 @@ export default function RiskMonitorPage() {
 
         return unsubscribe
     }, [subscribe])
+
+    // Load AI Insights when a session is selected
+    useEffect(() => {
+        if (!selectedUpdate) {
+            setAiDNA(null)
+            setAiReconstruction(null)
+            setAiForensicReport(null)
+            return
+        }
+
+        const fetchAIInsights = async () => {
+            setIsAILoading(true)
+            try {
+                const [dnaRes, reconRes] = await Promise.all([
+                    riskAPI.getAIDNA(selectedUpdate.user_id, selectedUpdate.features),
+                    riskAPI.getAIRconstruction(selectedUpdate.session_id, selectedUpdate.features)
+                ])
+                if (dnaRes.data.success) setAiDNA(dnaRes.data.data)
+                if (reconRes.data.success) setAiReconstruction(reconRes.data.data)
+            } catch (error) {
+                console.error('Failed to load AI insights:', error)
+            } finally {
+                setIsAILoading(false)
+            }
+        }
+
+        fetchAIInsights()
+    }, [selectedUpdate])
+
+    const handleGenerateReport = async () => {
+        if (!selectedUpdate) return
+
+        setIsReportLoading(true)
+        try {
+            const response = await riskAPI.getAIForensicReport(
+                selectedUpdate.session_id,
+                selectedUpdate.user_id,
+                selectedUpdate.features
+            )
+            if (response.data.success) {
+                setAiForensicReport(response.data.data)
+            }
+        } catch (error) {
+            console.error('Failed to generate forensic report:', error)
+        } finally {
+            setIsReportLoading(false)
+        }
+    }
 
     const groupedUpdates = riskUpdates.reduce((acc, update) => {
         const key = update.session_id
@@ -193,6 +246,135 @@ export default function RiskMonitorPage() {
                                                 </div>
                                             ))}
                                         </div>
+                                    </div>
+
+                                    {/* AI Behavioral DNA (New Feature 1) */}
+                                    <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-white border border-purple-100 shadow-sm">
+                                        <div className="flex items-center space-x-2 mb-4 text-purple-700">
+                                            <Sparkles className="w-5 h-5" />
+                                            <h4 className="font-bold text-sm uppercase tracking-wider">AI Behavioral DNA Profile</h4>
+                                        </div>
+                                        {isAILoading ? (
+                                            <div className="animate-pulse space-y-2">
+                                                <div className="h-4 bg-purple-100 rounded w-3/4"></div>
+                                                <div className="h-4 bg-purple-100 rounded w-1/2"></div>
+                                            </div>
+                                        ) : aiDNA ? (
+                                            <div className="space-y-4">
+                                                <p className="text-gray-800 font-bold text-lg leading-tight">
+                                                    {aiDNA.dna_profile}
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Badge className="bg-purple-600">DNA: {aiDNA.verdict_label}</Badge>
+                                                    <Badge variant="outline" className="border-purple-200 text-purple-700">Mood: {aiDNA.mood_state}</Badge>
+                                                    <Badge variant="outline" className="border-purple-200 text-purple-700">Intent: {aiDNA.intent_level}</Badge>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-400">Inference engine warming up...</p>
+                                        )}
+                                    </div>
+
+                                    {/* Shadow Reconstruction (New Feature 3) */}
+                                    <div className="p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-white border border-blue-100 shadow-sm">
+                                        <div className="flex items-center space-x-2 mb-4 text-blue-700">
+                                            <Activity className="w-5 h-5" />
+                                            <h4 className="font-bold text-sm uppercase tracking-wider">Shadow Session Reconstruction</h4>
+                                        </div>
+                                        {isAILoading ? (
+                                            <div className="animate-pulse space-y-2">
+                                                <div className="h-4 bg-blue-100 rounded w-5/6"></div>
+                                            </div>
+                                        ) : aiReconstruction ? (
+                                            <div className="space-y-3">
+                                                <p className="text-sm text-gray-700 italic">
+                                                    "{aiReconstruction.reconstruction}"
+                                                </p>
+                                                <div className="space-y-1">
+                                                    {aiReconstruction.visual_clues.map((clue: string, i: number) => (
+                                                        <div key={i} className="flex items-center text-[10px] text-blue-600 font-bold uppercase tracking-tighter">
+                                                            <div className="w-1 h-1 bg-blue-400 rounded-full mr-2" />
+                                                            {clue}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-400">Reconstructing physical environment...</p>
+                                        )}
+                                    </div>
+
+                                    {/* AI Forensic Report Section (Generated on demand) */}
+                                    <div className="pt-4 border-t border-gray-100">
+                                        {!aiForensicReport ? (
+                                            <Button
+                                                className="w-full bg-indigo-600 hover:bg-indigo-700 h-14 rounded-2xl shadow-lg border-b-4 border-indigo-800 active:border-b-0 active:translate-y-1 transition-all"
+                                                onClick={handleGenerateReport}
+                                                disabled={isReportLoading}
+                                            >
+                                                {isReportLoading ? (
+                                                    <div className="flex items-center space-x-2">
+                                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                                                        <span className="font-black uppercase tracking-widest text-xs">Architecting Report...</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center space-x-2">
+                                                        <FileText className="w-5 h-5" />
+                                                        <span className="font-black uppercase tracking-widest text-xs">Generate Lawsuit-Ready Report</span>
+                                                    </div>
+                                                )}
+                                            </Button>
+                                        ) : (
+                                            <div className="space-y-6 animate-in fade-in zoom-in duration-500">
+                                                <div className="flex items-center justify-between">
+                                                    <h4 className="text-sm font-black text-indigo-900 uppercase tracking-tighter flex items-center">
+                                                        <ShieldCheck className="w-4 h-4 mr-1" />
+                                                        Detailed Forensic Analysis
+                                                    </h4>
+                                                    <Badge className="bg-indigo-100 text-indigo-700 border-none">{aiForensicReport.report_id}</Badge>
+                                                </div>
+
+                                                <div className="p-5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                                                    <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Legal Assessment</p>
+                                                    <p className="text-sm text-indigo-900 font-bold leading-relaxed">{aiForensicReport.legal_assessment}</p>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Behavioral Evidence</p>
+                                                        <div className="space-y-2">
+                                                            {aiForensicReport.behavioral_evidence.map((item: string, i: number) => (
+                                                                <div key={i} className="flex items-start space-x-3 text-xs text-gray-700 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                                                                    <div className="mt-1 w-1.5 h-1.5 bg-indigo-400 rounded-full shrink-0" />
+                                                                    <span className="font-medium">{item}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Strategic Roadmap</p>
+                                                        <div className="space-y-2">
+                                                            {aiForensicReport.mitigation_roadmap.map((item: string, i: number) => (
+                                                                <div key={i} className="flex items-start space-x-3 text-xs text-emerald-800 bg-emerald-50 p-3 rounded-xl border border-emerald-100">
+                                                                    <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                                                                    <span className="font-bold">{item}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <Button
+                                                    variant="outline"
+                                                    className="w-full border-2 border-dashed border-gray-200 text-gray-400 hover:text-indigo-600 hover:border-indigo-200 h-12"
+                                                    onClick={() => window.print()}
+                                                >
+                                                    <Download className="w-4 h-4 mr-2" />
+                                                    Export to Forensic PDF
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
 
                                     {/* Metadata */}

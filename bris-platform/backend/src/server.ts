@@ -30,7 +30,10 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
     cors: {
         origin: (origin, callback) => {
-            if (!origin || origin === 'null' || config.cors.origins.indexOf(origin) !== -1) {
+            const allowedOrigins = config.cors.origins;
+            if (!origin || origin === 'null' || allowedOrigins.includes('*')) {
+                callback(null, true);
+            } else if (allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
                 callback(new Error('Not allowed by CORS'));
@@ -45,8 +48,10 @@ app.use(helmet());
 app.use(compression());
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl) or local files (origin 'null')
-        if (!origin || origin === 'null' || config.cors.origins.indexOf(origin) !== -1) {
+        const allowedOrigins = config.cors.origins;
+        if (!origin || origin === 'null' || allowedOrigins.includes('*')) {
+            callback(null, true);
+        } else if (allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             callback(new Error('Not allowed by CORS'));

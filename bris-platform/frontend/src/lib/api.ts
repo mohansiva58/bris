@@ -47,6 +47,14 @@ export const riskAPI = {
     getDashboardMetrics: () => api.get('/risk/dashboard/metrics'),
     updateAlertStatus: (alertId: number, status: string, notes?: string) =>
         api.patch(`/risk/alerts/${alertId}/status`, { status, resolution_notes: notes }),
+    getAIDNA: (userId: number, features: any) =>
+        api.post('/risk/ai/dna', { userId, features }),
+    getAIRconstruction: (sessionId: string, features: any) =>
+        api.post('/risk/ai/reconstruction', { sessionId, features }),
+    getAIGPTQuery: (query: string, contextData?: any[]) =>
+        api.post('/risk/ai/query', { query, contextData }),
+    getAIForensicReport: (sessionId: string, userId: number, features: any, eventsSummary?: any[]) =>
+        api.post('/risk/ai/forensic-report', { sessionId, userId, features, eventsSummary }),
 }
 
 // Events API

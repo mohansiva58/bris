@@ -22,4 +22,10 @@ router.get('/dashboard/metrics', authorize('admin', 'analyst'), RiskController.g
 // Update alert status (admin or analyst)
 router.patch('/alerts/:id/status', authorize('admin', 'analyst'), RiskController.updateAlertStatus);
 
+// AI ADVANCED FEATURES (Admin only)
+router.post('/ai/dna', authorize('admin'), RiskController.getAIDNA);
+router.post('/ai/reconstruction', authorize('admin'), RiskController.getAIRconstruction);
+router.post('/ai/query', authorize('admin'), RiskController.getAIGPTQuery);
+router.post('/ai/forensic-report', authorize('admin'), RiskController.getAIForensicReport);
+
 export default router;

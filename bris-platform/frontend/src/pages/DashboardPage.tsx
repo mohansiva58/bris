@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/Badge'
 import { riskAPI } from '@/lib/api'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import { Users, Activity, AlertTriangle, TrendingUp, Wifi, WifiOff, TrendingDown, Bell } from 'lucide-react'
+import { Users, Activity, AlertTriangle, TrendingUp, Wifi, WifiOff, TrendingDown, Bell, Search, Sparkles, Send, BrainCircuit, ShieldAlert, X } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function DashboardPage() {
@@ -14,6 +16,11 @@ export default function DashboardPage() {
     const [riskHistory, setRiskHistory] = useState<any[]>([])
     const [recentAlerts, setRecentAlerts] = useState<any[]>([])
     const [eventHistory, setEventHistory] = useState<any[]>([])
+
+    // BRIS-GPT State
+    const [gptQuery, setGptQuery] = useState('')
+    const [gptAnswer, setGptAnswer] = useState<string | null>(null)
+    const [isGptThinking, setIsGptThinking] = useState(false)
 
     const { data: metrics, refetch } = useQuery({
         queryKey: ['dashboard-metrics'],
@@ -157,6 +164,88 @@ export default function DashboardPage() {
                         )}
                     </div>
                 </div>
+
+                {/* BRIS-GPT AI COMMAND CENTER (New Feature 2) */}
+                <Card className="border-none shadow-2xl ring-2 ring-purple-500/20 bg-gradient-to-br from-gray-900 to-slate-900 text-white overflow-hidden relative group">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <BrainCircuit className="w-32 h-32" />
+                    </div>
+                    <CardContent className="p-8 relative z-10">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="p-2 bg-purple-500 rounded-lg shadow-lg shadow-purple-500/40">
+                                <Sparkles className="w-6 h-6 text-white" />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black tracking-tight">BRIS AI Threat Hunter</h3>
+                                <p className="text-purple-300 text-xs font-bold uppercase tracking-widest">Natural Language Intelligence Engine</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={async (e: React.FormEvent) => {
+                            e.preventDefault();
+                            if (!gptQuery.trim()) return;
+                            setIsGptThinking(true);
+                            try {
+                                const res = await riskAPI.getAIGPTQuery(gptQuery);
+                                setGptAnswer(res.data.data.answer);
+                            } catch (err) {
+                                setGptAnswer("Intelligence bridge disconnected. Please check Gemini configuration.");
+                            } finally {
+                                setIsGptThinking(false);
+                            }
+                        }} className="relative">
+                            <Input
+                                value={gptQuery}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGptQuery(e.target.value)}
+                                placeholder="Ask about a user, session, or current threat levels... (e.g., 'Analyze the most recent high-risk alert')"
+                                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 h-16 pl-14 pr-32 text-lg rounded-2xl focus:ring-purple-500 focus:border-purple-500 transition-all"
+                            />
+                            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-6 h-6 text-purple-400" />
+                            <Button
+                                type="submit"
+                                disabled={isGptThinking}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-600 hover:bg-purple-700 h-12 px-6 rounded-xl font-bold"
+                            >
+                                {isGptThinking ? 'Analysing...' : <><Send className="w-4 h-4 mr-2" /> Execute Search</>}
+                            </Button>
+                        </form>
+
+                        {gptAnswer && (
+                            <div className="mt-6 p-6 bg-white/5 border border-white/10 rounded-2xl animate-in fade-in slide-in-from-top-4 duration-500">
+                                <div className="flex items-start space-x-4">
+                                    <div className="p-2 bg-blue-500/20 rounded-full">
+                                        <ShieldAlert className="w-5 h-5 text-blue-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-blue-100 leading-relaxed text-lg">
+                                            {gptAnswer}
+                                        </p>
+                                        <div className="mt-4 flex items-center space-x-2">
+                                            <Badge variant="outline" className="border-blue-500/30 text-blue-400 bg-blue-500/10">AI INSIGHT</Badge>
+                                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Verified by Behavioral Forensic Engine</span>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setGptAnswer(null)} className="text-gray-500 hover:text-white transition-colors">
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-6 flex flex-wrap gap-2">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mr-2 self-center">Try:</span>
+                            {["'Most active user today?'", "'Any bot-like patterns?'", "'Summarize high risk alerts'"].map(suggestion => (
+                                <button
+                                    key={suggestion}
+                                    onClick={() => setGptQuery(suggestion.replace(/'/g, ''))}
+                                    className="text-[10px] bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-full text-gray-400 hover:text-purple-300 transition-all font-bold"
+                                >
+                                    {suggestion}
+                                </button>
+                            ))}
+                        </div>
+                    </CardContent>
+                </Card>
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
