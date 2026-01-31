@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { useWebSocket } from '@/hooks/useWebSocket'
 import { formatDate, getRiskColor } from '@/lib/utils'
-import { AlertCircle, TrendingUp, Clock, Filter, Sparkles, X, ShieldCheck, BrainCircuit, Activity, FileText, Download } from 'lucide-react'
+import { AlertCircle, TrendingUp, Clock, Filter, Sparkles, X, ShieldCheck, BrainCircuit, Activity, FileText, Download, Users, ChevronRight, History } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { riskAPI } from '@/lib/api'
 import { Trash2 } from 'lucide-react'
@@ -25,6 +25,7 @@ export default function RiskMonitorPage() {
     const [filter, setFilter] = useState<string>('all')
     const [isLoading, setIsLoading] = useState(true)
     const [selectedUpdate, setSelectedUpdate] = useState<RiskUpdate | null>(null)
+    const [selectedUserEvents, setSelectedUserEvents] = useState<RiskUpdate[] | null>(null)
     const [aiDNA, setAiDNA] = useState<any>(null)
     const [aiReconstruction, setAiReconstruction] = useState<any>(null)
     const [aiForensicReport, setAiForensicReport] = useState<any>(null)
@@ -152,21 +153,30 @@ export default function RiskMonitorPage() {
         }
     }
 
-    const groupedUpdates = riskUpdates.reduce((acc, update) => {
-        const key = update.session_id
-        if (!acc[key] || new Date(update.timestamp) > new Date(acc[key].timestamp)) {
-            acc[key] = update
+    const userGroups = riskUpdates.reduce((acc, update) => {
+        const uid = update.user_id
+        if (!acc[uid]) {
+            acc[uid] = {
+                user_id: uid,
+                latest: update,
+                all: [update]
+            }
+        } else {
+            acc[uid].all.push(update)
+            if (new Date(update.timestamp) > new Date(acc[uid].latest.timestamp)) {
+                acc[uid].latest = update
+            }
         }
         return acc
-    }, {} as Record<string, RiskUpdate>)
+    }, {} as Record<number, { user_id: number, latest: RiskUpdate, all: RiskUpdate[] }>)
 
-    const sortedGrouped = Object.values(groupedUpdates).sort((a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    const sortedGroups = Object.values(userGroups).sort((a, b) =>
+        new Date(b.latest.timestamp).getTime() - new Date(a.latest.timestamp).getTime()
     )
 
-    const filteredUpdates = sortedGrouped.filter(update => {
+    const filteredGroups = sortedGroups.filter(group => {
         if (filter === 'all') return true
-        return update.severity === filter
+        return group.latest.severity === filter
     })
 
     const getSeverityBadge = (severity: string) => {
@@ -407,11 +417,54 @@ export default function RiskMonitorPage() {
                     </div>
                 )}
 
+                {/* USER HISTORY DRAWER (Vertical List of Session Cards) */}
+                {selectedUserEvents && (
+                    <div className="fixed inset-0 z-40 flex justify-end">
+                        <div className="absolute inset-0 bg-black/20" onClick={() => setSelectedUserEvents(null)} />
+                        <div className="relative w-full max-w-lg bg-gray-50 h-screen shadow-xl animate-in slide-in-from-right overflow-y-auto border-l border-gray-200">
+                            <div className="p-6">
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="flex items-center space-x-2">
+                                        <History className="w-5 h-5 text-gray-400" />
+                                        <h3 className="font-bold text-gray-900">Behavioral Timeline</h3>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={() => setSelectedUserEvents(null)}>
+                                        <X className="w-4 h-4" />
+                                    </Button>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {selectedUserEvents.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((update, idx) => (
+                                        <Card key={idx} className="cursor-pointer hover:ring-2 hover:ring-purple-400 transition-all" onClick={() => setSelectedUpdate(update)}>
+                                            <CardContent className="p-4">
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-gray-400 uppercase">Session ID</p>
+                                                        <p className="text-xs font-mono font-bold text-gray-700">{update.session_id.substring(0, 12)}...</p>
+                                                    </div>
+                                                    <div className={`text-xl font-black ${getRiskColor(update.risk_score)}`}>{update.risk_score}</div>
+                                                </div>
+                                                <p className="text-xs text-gray-500 italic line-clamp-2 mb-2">
+                                                    {update.explanation?.split('|')[0].replace('**SUMMARY:**', '').trim()}
+                                                </p>
+                                                <p className="text-[10px] text-gray-400">{formatDate(update.timestamp)}</p>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Header */}
                 <div className="flex justify-between items-center">
                     <div>
-                        <h2 className="text-4xl font-black text-gray-900 tracking-tight">Live Monitor</h2>
-                        <p className="text-gray-500 mt-1 font-medium">Real-time summarized behavioral streams</p>
+                        <h2 className="text-4xl font-black text-gray-900 tracking-tight flex items-center">
+                            <Users className="w-10 h-10 mr-4 text-purple-600" />
+                            Behavioral HQ
+                        </h2>
+                        <p className="text-gray-500 mt-1 font-medium">Tracking human behavioral signatures across sessions</p>
                     </div>
                     <div className="flex items-center space-x-2">
                         <Button
@@ -426,7 +479,7 @@ export default function RiskMonitorPage() {
                         {isConnected && (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 animate-pulse px-3 py-1 rounded-full">
                                 <Clock className="w-3 h-3 mr-1" />
-                                Interactive Feed Active
+                                Real-time User Tracking
                             </Badge>
                         )}
                     </div>
@@ -436,31 +489,31 @@ export default function RiskMonitorPage() {
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <Card className="border-none shadow-sm ring-1 ring-gray-100">
                         <CardContent className="pt-6">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</p>
-                            <p className="text-3xl font-black text-gray-900">{stats.total}</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Active Users</p>
+                            <p className="text-3xl font-black text-gray-900">{filteredGroups.length}</p>
                         </CardContent>
                     </Card>
                     <Card className="border-none shadow-sm ring-1 ring-red-100 bg-red-50/30 cursor-pointer hover:bg-red-50 transition-colors" onClick={() => setFilter('critical')}>
                         <CardContent className="pt-6">
-                            <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Critical</p>
+                            <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Critical Users</p>
                             <p className="text-3xl font-black text-red-600">{stats.critical}</p>
                         </CardContent>
                     </Card>
                     <Card className="border-none shadow-sm ring-1 ring-orange-100 bg-orange-50/30 cursor-pointer hover:bg-orange-50 transition-colors" onClick={() => setFilter('high')}>
                         <CardContent className="pt-6">
-                            <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">High</p>
+                            <p className="text-[10px] font-bold text-orange-400 uppercase tracking-widest">High Risk Users</p>
                             <p className="text-3xl font-black text-orange-600">{stats.high}</p>
                         </CardContent>
                     </Card>
                     <Card className="border-none shadow-sm ring-1 ring-yellow-100 bg-yellow-50/30 cursor-pointer hover:bg-yellow-50 transition-colors" onClick={() => setFilter('medium')}>
                         <CardContent className="pt-6">
-                            <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Medium</p>
+                            <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest">Medium Risk</p>
                             <p className="text-3xl font-black text-yellow-600">{stats.medium}</p>
                         </CardContent>
                     </Card>
                     <Card className="border-none shadow-sm ring-1 ring-green-100 bg-green-50/30 cursor-pointer hover:bg-green-50 transition-colors" onClick={() => setFilter('low')}>
                         <CardContent className="pt-6">
-                            <p className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Low Risk</p>
+                            <p className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Stable Users</p>
                             <p className="text-3xl font-black text-green-600">{stats.low}</p>
                         </CardContent>
                     </Card>
@@ -478,100 +531,84 @@ export default function RiskMonitorPage() {
                                 className={filter === f ? 'shadow-sm' : 'text-gray-500'}
                                 onClick={() => setFilter(f)}
                             >
-                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                                {f === 'all' ? 'All Users' : f.charAt(0).toUpperCase() + f.slice(1)}
                             </Button>
                         ))}
                     </div>
                 </div>
 
-                {/* Updates List */}
+                {/* User Cards List */}
                 {isLoading ? (
                     <div className="py-20 text-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-                        <p className="text-gray-500 mt-4">Loading historical risk data...</p>
+                        <p className="text-gray-500 mt-4">Correlating behavioral signatures...</p>
                     </div>
-                ) : filteredUpdates.length === 0 ? (
+                ) : filteredGroups.length === 0 ? (
                     <Card className="border-dashed border-2">
-                        <CardContent className="py-12">
-                            <div className="text-center">
-                                <TrendingUp className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                                <p className="text-gray-500 text-lg font-bold">No suspicious streams detected</p>
-                                <p className="text-gray-400 text-sm mt-2">
-                                    {isConnected
-                                        ? 'Platform is monitoring live. Signals will appear here as detected.'
-                                        : 'Connecting to inference engine...'}
-                                </p>
-                            </div>
+                        <CardContent className="py-12 text-center">
+                            <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                            <p className="text-gray-500 text-lg font-bold">No registered behavioral profiles</p>
                         </CardContent>
                     </Card>
                 ) : (
-                    <div className="grid grid-cols-1 gap-4">
-                        {filteredUpdates.map((update, index) => (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {filteredGroups.map((group) => (
                             <Card
-                                key={`${update.session_id}-${index}`}
-                                className={`border-none shadow-sm ring-1 ring-gray-100 hover:ring-purple-200 transition-all ${index === 0 && filter === 'all' ? 'animate-in fade-in slide-in-from-top duration-700 ring-2 ring-purple-600/30' : ''
-                                    }`}
+                                key={group.user_id}
+                                className="group relative border-none shadow-md ring-1 ring-gray-100 hover:ring-2 hover:ring-purple-500 transition-all bg-white overflow-hidden cursor-pointer"
+                                onClick={() => setSelectedUserEvents(group.all)}
                             >
-                                <CardHeader className="pb-4">
-                                    <div className="flex items-start justify-between">
-                                        <div className="flex-1">
-                                            <div className="flex items-center space-x-3 mb-2">
-                                                <CardTitle className="text-xl font-black text-gray-900 tracking-tight">
-                                                    Session-{update.session_id.substring(0, 8)}
-                                                </CardTitle>
-                                                {getSeverityBadge(update.severity)}
+                                <div className={`h-2 ${getRiskColor(group.latest.risk_score)} bg-current opacity-80`} />
+                                <CardContent className="p-6">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center group-hover:bg-purple-50 group-hover:border-purple-100 transition-colors">
+                                                <Users className="w-6 h-6 text-gray-400 group-hover:text-purple-600" />
                                             </div>
-                                            <div className="flex items-center space-x-2 text-sm text-gray-500 font-medium">
-                                                <span className="bg-gray-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">User ID: {update.user_id}</span>
-                                                <span>•</span>
-                                                <span className="text-xs">{formatDate(update.timestamp)}</span>
+                                            <div>
+                                                <h4 className="text-lg font-black text-gray-900 leading-none">User-{group.user_id}</h4>
+                                                <div className="flex items-center space-x-2 mt-1">
+                                                    <Badge variant="outline" className="text-[10px] font-bold py-0 h-4 border-gray-200 text-gray-400">{group.all.length} Sessions</Badge>
+                                                    <span className="text-[10px] text-gray-300">•</span>
+                                                    <span className="text-[10px] text-gray-400 font-bold">{formatDate(group.latest.timestamp)}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex flex-col items-end">
-                                            <div className={`text-4xl font-black tracking-tighter ${getRiskColor(update.risk_score)}`}>
-                                                {update.risk_score}
+                                        <div className="text-right">
+                                            <div className={`text-3xl font-black tracking-tighter ${getRiskColor(group.latest.risk_score)}`}>
+                                                {group.latest.risk_score}
                                             </div>
-                                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Risk Index</p>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                        <div className="flex-1 bg-gray-50/50 rounded-xl p-4 border border-gray-100/50">
-                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest flex items-center mb-2">
-                                                <AlertCircle className="w-3 h-3 mr-1 text-purple-500" />
-                                                Behavioral Summary
-                                            </p>
-                                            <p className="text-sm text-gray-700 line-clamp-2 italic leading-relaxed">
-                                                {update.explanation?.split('|')[0].replace('**SUMMARY:**', '').trim()}
-                                            </p>
-                                        </div>
-                                        <div className="shrink-0">
-                                            <Button
-                                                onClick={() => setSelectedUpdate(update)}
-                                                className="w-full md:w-auto bg-purple-600 text-white hover:bg-purple-700 shadow-sm font-bold text-xs uppercase tracking-widest h-12 px-6 rounded-xl group transition-all"
-                                            >
-                                                <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
-                                                ✨ AI Deep Insight
-                                            </Button>
+                                            <p className="text-[10px] font-bold text-gray-400 uppercase">Live Index</p>
                                         </div>
                                     </div>
 
-                                    {/* Event Tiny Stats */}
-                                    {update.features && (
-                                        <div className="mt-4 flex flex-wrap gap-2">
-                                            {[
-                                                { label: 'Clicks', val: update.features.click_count, color: 'bg-blue-50 text-blue-600' },
-                                                { label: 'Typed', val: `${update.features.keypress_count}ch`, color: 'bg-gray-100 text-gray-600' },
-                                                { label: 'Tab Switch', val: update.features.tab_switch_count_raw, color: 'bg-orange-50 text-orange-600' },
-                                                { label: 'Pasted', val: update.features.paste_count, color: 'bg-red-50 text-red-600' },
-                                            ].map((stat) => (
-                                                <div key={stat.label} className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center ${stat.color}`}>
-                                                    {stat.label}: {stat.val || 0}
+                                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 group-hover:bg-purple-50/30 group-hover:border-purple-100/50 transition-colors">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 flex items-center">
+                                            <Activity className="w-3 h-3 mr-1 text-purple-400" />
+                                            Latest Behavior
+                                        </p>
+                                        <p className="text-xs text-gray-600 font-medium italic line-clamp-2">
+                                            "{group.latest.explanation?.split('|')[0].replace('**SUMMARY:**', '').trim()}"
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-6 flex items-center justify-between">
+                                        <div className="flex -space-x-2">
+                                            {group.all.slice(0, 4).map((_, i) => (
+                                                <div key={i} className="w-6 h-6 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
+                                                    <div className="w-1 h-1 rounded-full bg-gray-400" />
                                                 </div>
                                             ))}
+                                            {group.all.length > 4 && (
+                                                <div className="w-6 h-6 rounded-full border-2 border-white bg-purple-100 flex items-center justify-center text-[8px] font-bold text-purple-600">
+                                                    +{group.all.length - 4}
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+                                        <div className="flex items-center text-xs font-bold text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            View Timeline <ChevronRight className="w-4 h-4 ml-1" />
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))}
